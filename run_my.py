@@ -1,0 +1,2 @@
+import run_stanford_stages
+run_stanford_stages.run_using_json_file(json_file='stanford_stages.json')

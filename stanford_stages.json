@@ -1,5 +1,5 @@
 {
-    "edf_filename": "C:/Data/ml/CHP040.edf",
+    "edf_filename": "F:/narcolepsy_mnc/CNC/CHP/CHP040.edf",
     "channel_labels": {
         "central3": "EEG C3-A2",
         "central4": "EEG C4-A1",
@@ -10,9 +10,9 @@
         "occipital2": "EEG O2-A1"
     },
     "inf_config": {
-        "hypnodensity_model_dir": "F:/ml/ac/",
-        "hypnodensity_scale_path": "F:/ml/scaling",
-        "psg_noise_filename": "F:/ml/noiseM.mat",
+        "hypnodensity_model_dir": "ml/ac/",
+        "hypnodensity_scale_path": "ml/scaling",
+        "psg_noise_filename": "ml/noiseM.mat",
         "lights_filename": "",
         "lights_off": "",
         "lights_on": "",
@@ -36,7 +36,7 @@
         ],
         "narco_classifier_path": ""
     },
-    "output_path": "C:/Data/ml/results",
+    "output_path": "results",
     "save": {
         "diagnosis": false,
         "encoding": true,
