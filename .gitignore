@@ -15,6 +15,12 @@ ml/ac.zip
 ml/scaling.zip
 ml/ac
 ml/gp
+ml/scaling
 ml/ac/*
 ml/gp/*
+ml/scaling/*
 
+results/*
+.vscode/*
+
+*.edf
