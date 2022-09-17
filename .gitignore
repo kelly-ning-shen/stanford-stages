@@ -6,7 +6,7 @@
 narco_detector.zip
 
 Demo.pkl
-
+*.pkl
 *.hypno_pkl
 
 \.idea/
@@ -24,3 +24,7 @@ results/*
 .vscode/*
 
 *.edf
+
+test*.py
+
+tmp/*
