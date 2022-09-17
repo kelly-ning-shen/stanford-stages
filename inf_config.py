@@ -35,7 +35,7 @@ class AppConfig(object):
                        }
         #self.CCsize = dict(zip(self.channels,
         #                [2,2,2,2,4,4,0.4,[],[]]))
-        self.channels_used = dict.fromkeys(self.channels)
+        self.channels_used = dict.fromkeys(self.channels) # {'C3': None, 'C4': None, 'O1': None, 'O2': None, 'EOG-L': None, 'EOG-R': None, 'EMG': None, 'A1': None, 'A2': None}
         self.loaded_channels = dict.fromkeys(self.channels)
 
         self.psg_noise_file_pathname = './ml/noiseM.mat'
@@ -50,7 +50,7 @@ class AppConfig(object):
         self.lightsOn = []
 
         # Related to classifying narcolepsy from hypnodensity features
-        self.narco_classifier_path = './ml/gp'
+        self.narco_classifier_path = '.\\ml\\gp'
 
         self.narco_prediction_num_folds = 5 # for the gp narco classifier
         self.narco_prediction_scales = [0.90403101, 0.89939177, 0.90552177, 0.88393560,
@@ -65,6 +65,7 @@ class AppConfig(object):
 
 # Define Config
 class Config(object):
+    # default settings of model training
 
     @staticmethod
     def get(model_name):
@@ -112,6 +113,19 @@ class Config(object):
 
 # Now we can pass Config to ACConfig for construction; inheritence.
 class ACConfig(Config):
+    # different model settings
+    # 1. memory: 
+    #   - feed forward (FF), 
+    #   - long short-term memory networks (LSTM)
+    # 2. signal segment length: 
+    #   - short segments of 5s (SS), 
+    #   - long segments of 15s (LS)
+    # 3. complexity: 
+    #   - low (SH), 
+    #   - high (LH) [更复杂的 (CNN有更多隐藏层)：rh]
+    # 4. encoding: 
+    #   - octave encoding, 
+    #   - cross-correlation (CC) encoding
 
     def __init__(self, restart=True, model_name='ac_rh_ls_lstm_01', is_training=False, root_model_dir = './'):
 
@@ -119,17 +133,17 @@ class ACConfig(Config):
         if model_name[3:5] == 'lh':
             num_hidden = 256
         elif model_name[3:5] == 'rh':
-            np.random.seed(int(model_name[-2:]))
+            np.random.seed(int(model_name[-2:])) # np.random.seed(01)
             num_hidden = 256 + np.round(np.random.rand(1) * 128)
-            num_hidden = num_hidden[0].astype(int)
+            num_hidden = num_hidden[0].astype(int) # int: [256, 384]
         else:
             num_hidden = 128
 
         if model_name[6:8] == 'ls':
-            segsize = 60
+            segsize = 60 # 15s
             atonce = 1000
         else:
-            segsize = 20
+            segsize = 20 # 5s
             atonce = 3000
 
         if model_name[9:11] == 'ff':
@@ -147,4 +161,4 @@ class ACConfig(Config):
         num_classes = 5
         max_train_len = 14400
         super(ACConfig, self).__init__(scope, num_features, num_hidden, segsize, lstm, num_classes, batch_size,
-                                       max_train_len, atonce, restart, model_name, is_training, root_model_dir)
+                                       max_train_len, atonce, restart, model_name, is_training, root_model_dir) # Config.__init__

@@ -41,11 +41,11 @@ class Hypnodensity(object):
         self.CCsize = appConfig.CCsize
 
         self.channels = appConfig.channels
-        self.channels_used = appConfig.channels_used
-        self.loaded_channels = appConfig.loaded_channels
+        self.channels_used = appConfig.channels_used # dict 记录每个通道是否被使用 {'C3': 3, 'C4': 4, 'O1': 5, 'O2': 6, 'EOG-L': 7, 'EOG-R': 8, 'EMG': 9, 'A1': None, 'A2': None}
+        self.loaded_channels = appConfig.loaded_channels # dict 收集所需的通道的信号（单位：uV）
         self.edf_pathname = appConfig.edf_path
         self.encodedD = []
-        self.fs = int(appConfig.fs)
+        self.fs = int(appConfig.fs) # 100 Hz
         self.fsH = appConfig.fsH
         self.fsL = appConfig.fsL
         self.lightsOff = appConfig.lightsOff
@@ -54,11 +54,11 @@ class Hypnodensity(object):
         self.edf = []  # pyedflib.EdfFileReader
 
     def evaluate(self):
-        p = Path(self.edf_pathname)
-        p = Path(p.with_suffix('.pkl'))
+        p = Path(self.edf_pathname) # PosixPath('CHP040')
+        p = Path(p.with_suffix('.pkl')) # PosixPath('CHP040.pkl')
 
-        h = Path(self.edf_pathname)
-        h = Path(h.with_suffix('.hypno_pkl'))
+        h = Path(self.edf_pathname) # PosixPath('CHP040')
+        h = Path(h.with_suffix('.hypno_pkl')) # PosixPath('CHP040.hypno_pkl')
 
         if (p.exists()):
 
@@ -72,7 +72,7 @@ class Hypnodensity(object):
             myprint('Load noise level')
             self.psg_noise_level()
 
-            self.filtering()
+            self.filtering() # 0.2Hz-49Hz
 
             print('filtering done')
 
@@ -156,7 +156,7 @@ class Hypnodensity(object):
         return np.sqrt(np.divide(var, np.var(B, axis=0)))
 
     def encoding(self):
-
+        # cross-correlation (CC) encoding
         def encode_data(x1, x2, dim, slide, fs):
 
             # Length of the first dimension and overlap of segments
@@ -199,7 +199,7 @@ class Hypnodensity(object):
         # Append eog cross correlation
         enc.append(encode_data(self.loaded_channels['EOG-L'], self.loaded_channels['EOG-R'], self.CCsize['EOG-L'], 0.25, self.fs))
         min_length = np.min([x.shape[1] for x in enc])
-        enc = [v[:, :min_length] for v in enc]
+        enc = [v[:, :min_length] for v in enc] # 根据enc[i]中最少的列数来裁剪
 
         # Central, Occipital, EOG-L, EOG-R, EOG-L/R, chin
         enc = np.concatenate([enc[0], enc[1], enc[2], enc[3], enc[5], enc[4]], axis=0)
@@ -225,8 +225,8 @@ class Hypnodensity(object):
             myprint('Loading', ch)
             if isinstance(self.channels_used[ch], int):
 
-                self.loaded_channels[ch] = self.edf.readSignal(self.channels_used[ch])
-                if self.edf.getPhysicalDimension(self.channels_used[ch]).lower() == 'mv':
+                self.loaded_channels[ch] = self.edf.readSignal(self.channels_used[ch]) # read signals according to channels index
+                if self.edf.getPhysicalDimension(self.channels_used[ch]).lower() == 'mv': # signal的单位统一成uV
                     myprint('mv')
                     self.loaded_channels[ch] *= 1e3
                 elif self.edf.getPhysicalDimension(self.channels_used[ch]).lower() == 'v':
@@ -244,14 +244,14 @@ class Hypnodensity(object):
                 self.trim(ch)
 
             else:
-                print('channel[', ch, '] was empty (skipped)', sep='')
+                print('channel[', ch, '] was empty (skipped)', sep='') # 如果采集的信号中不包含这个通道，那就在dict中删去
                 del self.channels_used[ch]
 
     def trim(self, ch):
         # 30 represents the epoch length most often used in standard hypnogram scoring.
         rem = len(self.loaded_channels[ch]) % int(self.fs * 30)
         # Otherwise, if rem == 0, the following results in an empty array
-        if rem>0:
+        if rem>0: # 删掉最后不满足一个epoch长度的部分
             self.loaded_channels[ch] = self.loaded_channels[ch][:-rem]
 
     def loadHeader(self):
@@ -264,10 +264,10 @@ class Hypnodensity(object):
 
     def filtering(self):
         myprint('Filtering remaining signals')
-        fs = self.fs
+        fs = self.fs # 100Hz
 
-        Fh = signal.butter(5, self.fsH / (fs / 2), btype='highpass', output='ba')
-        Fl = signal.butter(5, self.fsL / (fs / 2), btype='lowpass', output='ba')
+        Fh = signal.butter(5, self.fsH / (fs / 2), btype='highpass', output='ba') # 0.2Hz
+        Fl = signal.butter(5, self.fsL / (fs / 2), btype='lowpass', output='ba') # 49Hz
 
         for ch, ch_idx in self.channels_used.items():
             # Fix for issue 9: https://github.com/Stanford-STAGES/stanford-stages/issues/9
@@ -301,7 +301,7 @@ class Hypnodensity(object):
 
     def psg_noise_level(self):
 
-        # Only need to check noise levels when we have two central or occipital channels
+        # Only need to check noise levels when we have two central or occipital channels（当有两个central or occipital channels时，才需要根据噪声大小来选择）
         # which we should then compare for quality and take the best one.  We can test this
         # by first checking if there is a channel category 'C4' or 'O2'
         hasC4 = self.channels_used.get('C4') is not None
@@ -344,44 +344,44 @@ class Hypnodensity(object):
         # return loudest_ch
 
     def channel_noise_level(self, channelTag, meanV, covM):
-        hjorth = self.extract_hjorth(self.loaded_channels[channelTag])
-        noise_vec = np.zeros(hjorth.shape[1])
+        hjorth = self.extract_hjorth(self.loaded_channels[channelTag]) # shape: (3,107)
+        noise_vec = np.zeros(hjorth.shape[1]) # shape: (107,)
         for k in range(len(noise_vec)):
             M = hjorth[:, k][:, np.newaxis]
             x = M - meanV[:, np.newaxis]
-            sigma = np.linalg.inv(covM)
-            noise_vec[k] = np.sqrt(np.dot(np.dot(np.transpose(x), sigma), x))
-            return np.mean(noise_vec)
+            sigma = np.linalg.inv(covM) # 矩阵求逆 covM: 3*3 matrix
+            noise_vec[k] = np.sqrt(np.dot(np.dot(np.transpose(x), sigma), x)) # (x^T·covM^-1·x)^2
+            return np.mean(noise_vec) # 只考虑hjorth的第一列
 
     def run_data(dat, model, root_model_path):
         ac_config = ACConfig(model_name=model, is_training=False, root_model_dir=root_model_path)
-        hyp = Hypnodensity.run(dat, ac_config)
+        hyp = Hypnodensity.run(dat, ac_config) # dat: data after encoding 即为 self.encodedD
         return hyp
 
     def score_data(self):
         self.hypnodensity = list()
-        for l in self.config.models_used:
+        for l in self.config.models_used: # 'ac_rh_ls_lstm_01' ~ 'ac_rh_ls_lstm_16' 集成学习：训练了16个这样的模型
             hyp = Hypnodensity.run_data(self.encodedD, l, self.config.hypnodensity_model_root_path)
-            hyp = softmax(hyp)
+            hyp = softmax(hyp) # e^x/∑e^x 不返回最大值所在的索引，只是计算这个公式
             self.hypnodensity.append(hyp)
 
     def segment(dat, ac_config):
         # Get integer value for segment size using //
-        n_seg = dat.shape[1] // ac_config.segsize
+        n_seg = dat.shape[1] // ac_config.segsize # 128625 // 60 = 2143
 
-        dat = np.expand_dims(dat[:, :n_seg * ac_config.segsize], 0)
+        dat = np.expand_dims(dat[:, :n_seg * ac_config.segsize], 0) # shape: (1,1640,128580)
 
         num_batches = np.int(
-            np.ceil(np.divide(dat.shape[2], (ac_config.eval_nseg_atonce * ac_config.segsize), dtype='float')))
+            np.ceil(np.divide(dat.shape[2], (ac_config.eval_nseg_atonce * ac_config.segsize), dtype='float'))) # 3。这里考虑了5分钟 blocks？
 
-        Nextra = np.int(np.ceil(num_batches * ac_config.eval_nseg_atonce * ac_config.segsize) % dat.shape[2])
+        Nextra = np.int(np.ceil(num_batches * ac_config.eval_nseg_atonce * ac_config.segsize) % dat.shape[2]) # 还需填补的
         # why not:    Nextra = num_batches * ac_config.eval_nseg_atonce * ac_config.segsize - dat.shape[2]
 
         # fill remaining (nExtra) values with the mean value of each column
-        meanF = np.mean(np.mean(dat, 2), 0) * np.ones([1, Nextra, dat.shape[1]])
+        meanF = np.mean(np.mean(dat, 2), 0) * np.ones([1, Nextra, dat.shape[1]]) # 用均值来填充 shape: (1,51420,1640)
 
-        dat = np.transpose(dat, [0, 2, 1])
-        dat = np.concatenate([dat, meanF], 1)
+        dat = np.transpose(dat, [0, 2, 1]) # shape: (1,128580,1640)
+        dat = np.concatenate([dat, meanF], 1) # shape: (1,180000,1640)
 
         prediction = np.zeros([num_batches * ac_config.eval_nseg_atonce, 5])
 
@@ -402,7 +402,7 @@ class Hypnodensity(object):
 
                 state = np.zeros([1, ac_config.num_hidden * 2])
 
-                dat, Nextra, prediction, num_batches = Hypnodensity.segment(dat, ac_config)
+                dat, Nextra, prediction, num_batches = Hypnodensity.segment(dat, ac_config) # 这里才将全时长的信号（编码后）进行分割segment
                 for i in range(num_batches):
                     x = dat[:, i * ac_config.eval_nseg_atonce * ac_config.segsize:(i + 1) * ac_config.eval_nseg_atonce * ac_config.segsize,:]
 
@@ -416,7 +416,7 @@ class Hypnodensity(object):
 
                     prediction[i * ac_config.eval_nseg_atonce:(i + 1) * ac_config.eval_nseg_atonce, :] = est
 
-                prediction = prediction[:-int(Nextra / ac_config.segsize), :]
+                prediction = prediction[:-int(Nextra / ac_config.segsize), :] # 删掉Nextra引入的那部分
 
                 return prediction
 

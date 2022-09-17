@@ -29,6 +29,10 @@ from matplotlib.patches import Polygon
 from inf_hypnodensity import \
     Hypnodensity  # from inf_extract_features import ExtractFeatures --> moved to inf_hypnodensity.py
 from inf_config import AppConfig  # for AppConfig() <-- narco_biomarker(), [previously]
+# print(tf.test.is_gpu_available())
+
+understandCode = True
+edfFile = 'CHP040.edf'
 
 DEBUG_MODE = False
 STANDARD_EPOCH_SEC = 30
@@ -45,7 +49,7 @@ def main(edfFilename,
          configInput):  # configInput is object with additional settings.   'channel_indices', 'lightsOff','lightsOn'
 
     # Application settings
-    appConfig = AppConfig()
+    appConfig = AppConfig() # inf _config.py - class AppConfig
     appConfig.edf_path = edfFilename;
 
     channel_categories = {
@@ -71,10 +75,12 @@ def main(edfFilename,
                     appConfig.channels_used[channel_label[i]] = channel_index[i]
             else:
                 appConfig.channels_used[channel_label] = channel_index
+            # appConfig.channels_used: {'C3': 3, 'C4': 4, 'O1': 5, 'O2': 6, 'EOG-L': 7, 'EOG-R': 8, 'EMG': 9, 'A1': None, 'A2': None}
 
     appConfig.lightsOff = configInput.get('lightsOff', [])
     appConfig.lightsOn = configInput.get('lightsOn', [])
 
+    # hyp: default
     hyp = {'show': {}, 'save': {}, 'filename': {}}
     hyp['show']['plot'] = False
     hyp['show']['hypnogram'] = False
@@ -91,6 +97,7 @@ def main(edfFilename,
     hyp['filename']['hypnogram'] = changeFileExt(edfFilename, '.hypnogram.txt');
     hyp['filename']['diagnosis'] = changeFileExt(edfFilename, '.diagnosis.txt');
 
+    # hyp: update with configInput
     hyp['save'].update(configInput.get('save', {}))
     hyp['show'].update(configInput.get('show', {}))
 
@@ -99,7 +106,7 @@ def main(edfFilename,
     narcoApp = NarcoApp(appConfig)
 
     # narcoApp.eval_all()
-    narcoApp.eval_hypnodensity()
+    narcoApp.eval_hypnodensity() # run the program!
 
 
     if hypnoConfig['show']['hypnogram']:
@@ -239,8 +246,10 @@ class NarcoApp(object):
                 #         print('{} | Loading and predicting using {}'.format(datetime.now(), os.path.join(gpmodels_base_path, gpmodel, gpmodel + '_fold{:02}.gpm'.format(k+1))))
                 with tf.Graph().as_default() as graph:
                     with tf.Session():
-                        m = gpf.saver.Saver().load(
-                            os.path.join(gpmodels_base_path, gpmodel, gpmodel + '_fold{:02}.gpm'.format(k + 1)))
+                        path_gp = os.path.join(gpmodels_base_path, gpmodel, gpmodel + '_fold{:02}.gpm'.format(k + 1))
+                        print(path_gp)
+                        gpfSave = gpf.saver.Saver()
+                        m = gpfSave.load(path_gp)
                         mean_pred[:, idx, k, np.newaxis], var_pred[:, idx, k, np.newaxis] = m.predict_y(X)
 
         self.narcolepsy_probability = np.sum(np.multiply(np.mean(mean_pred, axis=2), scales), axis=1) / np.sum(scales)
@@ -297,6 +306,26 @@ if __name__ == '__main__':
 
             # For hard coding/bypassing json input argument, uncomment the following:
             # jsonObj = json.loads('{"channel_indices":{"centrals":[3,4],"occipitals":[5,6],"eog_l":7,"eog_r":8,"chin_emg":9}, "show":{"plot":false,"hypnodensity":false,"hypnogram":false}, "save":{"plot":false,"hypnodensity":true, "hypnogram":true}}')
+            '''
+            {"channel_indices":{
+                "centrals":[3,4],
+                "occipitals":[5,6],
+                "eog_l":7,
+                "eog_r":8,
+                "chin_emg":9
+                }, 
+            "show":{
+                "plot":false,
+                "hypnodensity":false,
+                "hypnogram":false
+                }, 
+            "save":{
+                "plot":false,
+                "hypnodensity":true, 
+                "hypnogram":true
+                }
+            }
+            '''
             jsonObj = json.loads(sys.argv[2])
             try:
                 main(edfFile, jsonObj)
@@ -305,4 +334,11 @@ if __name__ == '__main__':
 
 
     else:
-        print(sys.argv[0], 'requires two arguments when run as a script')
+        if understandCode:
+            jsonObj = json.loads('{"channel_indices":{"centrals":[3,4],"occipitals":[5,6],"eog_l":7,"eog_r":8,"chin_emg":9}, "show":{"plot":false,"hypnodensity":false,"hypnogram":false}, "save":{"plot":false,"hypnodensity":true, "hypnogram":true}}')
+            try:
+                main(edfFile, jsonObj)
+            except OSError as oserr:
+                print("OSError:", oserr)
+        else:
+            print(sys.argv[0], 'requires two arguments when run as a script')

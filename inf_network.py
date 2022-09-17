@@ -27,9 +27,10 @@ class SCModel(object):
         # Layer in
         with tf.variable_scope('input_hidden') as scope:
             inputs = self._features
-            inputs = tf.reshape(inputs, shape=[batch_size_int, -1, ac_config.segsize, ac_config.num_features])
+            inputs = tf.reshape(inputs, shape=[batch_size_int, -1, ac_config.segsize, ac_config.num_features]) # ac_config.segsize
 
-        hidden_eeg = sc_conv.main(inputs[:, :, :, :400], ac_config, 'eeg', batch_size_int)
+        # 针对不同种类的信号，训练对应的CNN网络
+        hidden_eeg = sc_conv.main(inputs[:, :, :, :400], ac_config, 'eeg', batch_size_int) # During training, data batches were selected at random.
         hidden_eog = sc_conv.main(inputs[:, :, :, 400:1600], ac_config, 'eog', batch_size_int)
         hidden_emg = sc_conv.main(inputs[:, :, :, 1600:], ac_config, 'emg', batch_size_int)
 
@@ -38,14 +39,14 @@ class SCModel(object):
         if tf.__version__ < '1.0':
             hidden_combined = tf.concat(2, [hidden_eeg, hidden_eog, hidden_emg])
         else:
-            hidden_combined = tf.concat([hidden_eeg, hidden_eog, hidden_emg], 2)
+            hidden_combined = tf.concat([hidden_eeg, hidden_eog, hidden_emg], 2) # concatenate CNN features from EEG, EOG, EMG
         nHid = hidden_combined.get_shape()
 
         # Regularization
-
+        # for dropout (line: 60)
         if ac_config.is_training and (
                 ac_config.keep_prob < 1.0):  # should this be ac_config.is_training + ac_config.keep_prob < 1.0
-            iKeepProb = ac_config.keep_prob
+            iKeepProb = ac_config.keep_prob # For LSTM networks, dropout was included, set at 0.5 while training.
             oKeepProb = ac_config.keep_prob
         else:
             iKeepProb = 1
@@ -81,15 +82,15 @@ class SCModel(object):
         # Evaluate
 
         cross_ent = self.intelligent_cost(logits)
-        loss = self.gather_loss()
+        loss = self.gather_loss() # 统计所有的 cross_ent （利用'losses'）
         self._loss = loss
         self._logits = logits
         self._cross_ent = cross_ent
         self._softmax = tf.nn.softmax(logits)
         self._predict = tf.argmax(self._softmax, 1)
         self._correct = tf.equal(tf.argmax(logits, 1), tf.argmax(self._targets, 1))
-        self._accuracy = tf.reduce_mean(tf.cast(self._correct, tf.float32))
-        self._confidence = tf.reduce_sum(tf.multiply(self._softmax, self._targets), 1);
+        self._accuracy = tf.reduce_mean(tf.cast(self._correct, tf.float32)) # 计算所有元素的均值，并降维
+        self._confidence = tf.reduce_sum(tf.multiply(self._softmax, self._targets), 1); # self.targets是什么样的？
         self._baseline = (tf.reduce_mean(self._targets, 0))
 
         if ac_config.lstm:
@@ -106,7 +107,7 @@ class SCModel(object):
         variables_averages = tf.train.ExponentialMovingAverage(0.999)
 
         optimize = optimizer.minimize(self._loss)
-        variables_averages_op = variables_averages.apply(tf.trainable_variables())
+        variables_averages_op = variables_averages.apply(tf.trainable_variables()) # 定义一个更新变量滑动平均的操作。这里需要给定一个列表，每次执行这个操作时，这个列表中的变量都会被更新
 
         with tf.control_dependencies([optimize, variables_averages_op]):
             self._train_op = tf.no_op(name='train')
