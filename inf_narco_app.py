@@ -85,12 +85,12 @@ def main(edfFilename,
     hyp['show']['plot'] = False
     hyp['show']['hypnogram'] = False
     hyp['show']['hypnodensity'] = False
-    hyp['show']['diagnosis'] = True
+    hyp['show']['diagnosis'] = False
 
     hyp['save']['plot'] = True
     hyp['save']['hypnogram'] = True
     hyp['save']['hypnodensity'] = True
-    hyp['save']['diagnosis'] = True
+    hyp['save']['diagnosis'] = False
 
     hyp['filename']['plot'] = changeFileExt(edfFilename, '.hypnodensity.png');
     hyp['filename']['hypnodensity'] = changeFileExt(edfFilename, '.hypnodensity.txt');
@@ -249,7 +249,7 @@ class NarcoApp(object):
                         path_gp = os.path.join(gpmodels_base_path, gpmodel, gpmodel + '_fold{:02}.gpm'.format(k + 1))
                         print(path_gp)
                         gpfSave = gpf.saver.Saver()
-                        m = gpfSave.load(path_gp)
+                        m = gpfSave.load(path_gp) # bug! here!
                         mean_pred[:, idx, k, np.newaxis], var_pred[:, idx, k, np.newaxis] = m.predict_y(X)
 
         self.narcolepsy_probability = np.sum(np.multiply(np.mean(mean_pred, axis=2), scales), axis=1) / np.sum(scales)
@@ -335,7 +335,7 @@ if __name__ == '__main__':
 
     else:
         if understandCode:
-            jsonObj = json.loads('{"channel_indices":{"centrals":[3,4],"occipitals":[5,6],"eog_l":7,"eog_r":8,"chin_emg":9}, "show":{"plot":false,"hypnodensity":false,"hypnogram":false}, "save":{"plot":false,"hypnodensity":true, "hypnogram":true}}')
+            jsonObj = json.loads('{"channel_indices":{"centrals":[3,4],"occipitals":[5,6],"eog_l":7,"eog_r":8,"chin_emg":9}, "show":{"plot":true,"hypnodensity":false,"hypnogram":false}, "save":{"plot":true,"hypnodensity":true, "hypnogram":true}}')
             try:
                 main(edfFile, jsonObj)
             except OSError as oserr:
