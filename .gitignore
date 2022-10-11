@@ -26,5 +26,6 @@ results/*
 *.edf
 
 test*.py
+test*.ipynb
 
 tmp/*
