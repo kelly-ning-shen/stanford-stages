@@ -103,7 +103,7 @@ class Hypnodensity(object):
         for i in range(len(self.hypnodensity)):
             av += self.hypnodensity[i]
 
-        av = np.divide(av, len(self.hypnodensity))
+        av = np.divide(av, len(self.hypnodensity)) # 取出16个模型上得到的hypnodensity，然后取平均
         return av
 
     # 0 is wake, 1 is stage-1, 2 is stage-2, 3 is stage 3/4, 5 is REM
@@ -116,7 +116,7 @@ class Hypnodensity(object):
 
     def get_features(self, modelName, idx):
         selected_features = self.config.narco_prediction_selected_features
-        X = self.Features.extract(self.hypnodensity[idx])
+        X = self.Features.extract(self.hypnodensity[idx]) # idx: 第idx个模型所生成的 hypnodensity
         X = self.Features.scale_features(X, modelName)
         return X[selected_features].T
 
@@ -433,14 +433,15 @@ class HypnodensityFeatures(object):  # <-- extract_features
         # self.select_features_pickle_name = appConfig.hypnodensity_select_features_pickle_name  # 'narcoFeatureSelect.p'
 
     def extract(self, hyp):
+        # hyp: (2143,5)
         eps = 1e-10
-        hyp = hyp[~np.isnan(hyp[:, 0]), :]  # or np.invert(np.isnan(hyp[:, 0])
-        features = np.zeros([24 + 31 * 15])
+        hyp = hyp[~np.isnan(hyp[:, 0]), :]  # or np.invert(np.isnan(hyp[:, 0]) 删除（第一列）为NaN的行
+        features = np.zeros([24 + 31 * 15]) # total: 489个特征
         j = -1
         f = 10
 
         for i in range(5):
-            for comb in itertools.combinations([0, 1, 2, 3, 4], i + 1):
+            for comb in itertools.combinations([0, 1, 2, 3, 4], i + 1): # 针对31种stage combinations
                 j += 1
                 dat = np.prod(hyp[:, comb], axis=1) ** (1 / float(len(comb)))
 
@@ -470,7 +471,7 @@ class HypnodensityFeatures(object):  # <-- extract_features
                 features[j * 15 + 13] = np.sqrt(I3 * 2 * np.mean(dat))
                 features[j * 15 + 14] = np.sqrt(I4 * 2 * np.mean(dat))
 
-        rem = (hyp.shape[0] % 2)
+        rem = (hyp.shape[0] % 2) # 保留偶数个行
         if rem == 1:
             data = hyp[:-rem, :]
         else:
