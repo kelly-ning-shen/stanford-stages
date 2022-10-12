@@ -477,44 +477,44 @@ class HypnodensityFeatures(object):  # <-- extract_features
         else:
             data = hyp
 
-        data = data.reshape([-1, 2, 5])
-        data = np.squeeze(np.mean(data, axis=1))
+        data = data.reshape([-1, 2, 5]) # 两行一组（两行为30s？）
+        data = np.squeeze(np.mean(data, axis=1)) # 一组内两行做平均（依然是5个睡眠阶段）
 
-        S = np.argmax(data, axis=1)
+        S = np.argmax(data, axis=1) # 类似于 hypnograph（对应的睡眠阶段）
 
-        SL = [i for i, v in enumerate(S) if v != 0]
-        if len(SL) == 0:
+        SL = [i for i, v in enumerate(S) if v != 0] # 找出非零项的index
+        if len(SL) == 0: # 未入睡
             SL = len(data)
-        else:
+        else: # 入睡
             SL = SL[0]
 
         RL = [i for i, v in enumerate(S) if v == 4]
-        if len(RL) == 0:
+        if len(RL) == 0: # 没有REM期
             RL = len(data)
         else:
-            RL = RL[0]
+            RL = RL[0] # 找到第一个REM期所在的index
 
         # Nightly SOREMP
 
-        wCount = 0;
-        rCount = 0;
-        rCountR = 0;
-        soremC = 0;
+        wCount = 0; # 中间变量（工具人）
+        rCount = 0; # 中间变量（工具人）
+        rCountR = 0; # [feature] cumulative REM duration following wake/N1 periods longer than 2.5 min
+        soremC = 0; # [feature] presence and number of SOREMPs during the night (SOREMPs defined as REM sleep occurring after at least 2.5 min of wake or stage 1)
         for i in range(SL, len(S)):
             if (S[i] == 0) | (S[i] == 1):
-                wCount += 1
-            elif (S[i] == 4) & (wCount > 4):
+                wCount += 1 # 统计epoch(?) 为 N1 或 wake 的数量
+            elif (S[i] == 4) & (wCount > 4): # (SOREMPs defined as REM sleep occurring after at least 2.5 min of wake or stage 1) 如果已有大于4个epoch为wake或N1，而且出现了REM期
                 rCount += 1
                 rCountR += 1
-            elif rCount > 1:
-                soremC += 1
-            else:
+            elif rCount > 1: # 结束这一段REM期后，再计数
+                soremC += 1 # 这样统计的是s[i]=2或3时的个数（也许还有其他附加条件
+            else: # 这就保证了：只关注wake、N1后紧接着的REM
                 wCount = 0
                 rCount = 0
 
         # NREM Fragmentation
-        nCount = 0
-        nFrag = 0
+        nCount = 0 # 中间变量（工具人）
+        nFrag = 0 # [feature] NREM fragmentation
         for i in range(SL, len(S)):
             if (S[i] == 2) | (S[i] == 3):
                 nCount += 1
@@ -523,29 +523,31 @@ class HypnodensityFeatures(object):  # <-- extract_features
                 nCount = 0
 
         # W/N1 Bouts
-        wCount = 0
+        wCount = 0 # 中间变量（工具人）
         wBout = 0
-        wCum = 0
-        sCount = 0
+        wCum = 0 # [feature] the cumulative wake/N1 duration for wakefulness periods shorter than 15 min
+        sCount = 0 # 中间变量（工具人）
         for i in range(SL, len(S)):
-            if S[i] != 1:
+            if S[i] != 1: # ?
                 sCount += 1
 
-            if (sCount > 5) & ((S[i] == 0) | (S[i] == 1)):
+            if (sCount > 5) & ((S[i] == 0) | (S[i] == 1)): # N1 and wake combined to indicate wakefulness and a long period defined as 3 min or more).
                 wCount = wCount + 1
-                if wCount < 30:
+                if wCount < 30: # the cumulative wake/N1 duration for wakefulness periods shorter than 15 min
                     wCum = wCum + 1
 
             elif wCount > 4:
                 wCount = 0
                 wBout = wBout + 1
 
-        features[-24] = self.logmodulus(SL * f)
+        features[-24] = self.logmodulus(SL * f) # 为什么要乘f
         features[-23] = self.logmodulus(RL - SL * f)
+        # print(SL*f) # 1010
+        # print(RL-SL*f) # -909
 
         features[-22] = np.sqrt(rCountR)
         features[-21] = np.sqrt(soremC)
-        features[-20] = np.sqrt(nFrag)
+        features[-20] = np.sqrt(nFrag) # NREM Fragmentation
         features[-19] = np.sqrt(wCum)
         features[-18] = np.sqrt(wBout)
 
